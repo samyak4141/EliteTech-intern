@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Weather App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a cleaner look */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Basic styling for the body */
+        body {
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure it takes full viewport height */
+            margin: 0;
+            padding: 20px; /* Add some padding for smaller screens */
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="weather-container bg-white shadow-xl rounded-2xl p-8 max-w-md w-full border border-gray-200 transform transition-all duration-300 hover:scale-105">
+        <!-- Application Title -->
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-6 tracking-tight">Weather Forecast</h1>
+
+        <!-- City Input Section -->
+        <div class="flex items-center space-x-3 mb-6">
+            <input
+                type="text"
+                id="cityInput"
+                placeholder="Enter city name..."
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 placeholder-gray-400 text-lg"
+            />
+            <button
+                id="fetchWeatherBtn"
+                class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
+            >
+                Get Weather
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="text-center text-blue-600 font-medium text-lg hidden mb-4">
+            Loading weather data...
+        </div>
+
+        <!-- Error Message Display -->
+        <div id="errorMessage" class="text-center text-red-600 font-medium text-lg hidden mb-4">
+            City not found or API error. Please try again.
+        </div>
+
+        <!-- Weather Display Section -->
+        <div id="weatherDisplay" class="hidden text-center">
+            <h2 id="cityName" class="text-5xl font-bold text-gray-900 mb-2"></h2>
+            <p id="temperature" class="text-7xl font-extrabold text-blue-600 mb-4"></p>
+            <p id="description" class="text-3xl text-gray-700 mb-4 capitalize"></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left mt-6">
+                <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-lg font-semibold text-gray-600">Humidity:</p>
+                    <p id="humidity" class="text-2xl font-bold text-blue-800"></p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+                    <p class="text-lg font-semibold text-gray-600">Wind Speed:</p>
+                    <p id="windSpeed" class="text-2xl font-bold text-blue-800"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to HTML elements
+        const cityInput = document.getElementById('cityInput');
+        const fetchWeatherBtn = document.getElementById('fetchWeatherBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorMessage = document.getElementById('errorMessage');
+        const weatherDisplay = document.getElementById('weatherDisplay');
+        const cityName = document.getElementById('cityName');
+        const temperature = document.getElementById('temperature');
+        const description = document.getElementById('description');
+        const humidity = document.getElementById('humidity');
+        const windSpeed = document.getElementById('windSpeed');
+
+        // IMPORTANT: Replace "YOUR_API_KEY" with your actual OpenWeatherMap API key
+        const API_KEY = "add7ee009e11116d223c9d68d0fc7974";
+        const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+
+        /**
+         * Fetches weather data for a given city from the OpenWeatherMap API.
+         * @param {string} city - The name of the city to fetch weather for.
+         */
+        async function getWeatherData(city) {
+            // Show loading indicator and hide previous messages/data
+            loadingIndicator.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            weatherDisplay.classList.add('hidden');
+
+            if (!city) {
+                errorMessage.textContent = "Please enter a city name.";
+                errorMessage.classList.remove('hidden');
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            // Check if the API key is the default placeholder
+            if (API_KEY === "YOUR_API_KEY") {
+                errorMessage.textContent = "Error: Please replace 'YOUR_API_KEY' with your actual OpenWeatherMap API key in the JavaScript code.";
+                errorMessage.classList.remove('hidden');
+                loadingIndicator.classList.add('hidden');
+                console.error("API Key is not set. Please replace 'YOUR_API_KEY' in the script with your actual OpenWeatherMap API key.");
+                return;
+            }
+
+            try {
+                // Construct the API URL
+                const url = `${BASE_URL}?q=${city}&appid=${API_KEY}&units=metric`; // units=metric for Celsius
+
+                // Fetch data from the API
+                const response = await fetch(url);
+
+                // Check if the response is OK (status code 200)
+                if (!response.ok) {
+                    // If not OK, parse the error message from the API
+                    const errorData = await response.json();
+                    let errorMsg = errorData.message || 'Failed to fetch weather data.';
+                    if (response.status === 401) {
+                        errorMsg = "Invalid API key. Please ensure your OpenWeatherMap API key is correct and not expired.";
+                    } else if (response.status === 404) {
+                        errorMsg = "City not found. Please check the city name and try again.";
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                // Parse the JSON response
+                const data = await response.json();
+
+                // Update the DOM with the fetched weather data
+                cityName.textContent = data.name;
+                temperature.textContent = `${Math.round(data.main.temp)}°C`;
+                description.textContent = data.weather[0].description;
+                humidity.textContent = `${data.main.humidity}%`;
+                windSpeed.textContent = `${data.wind.speed} m/s`;
+
+                // Show the weather display section
+                weatherDisplay.classList.remove('hidden');
+
+            } catch (error) {
+                // Display error message to the user
+                errorMessage.textContent = `Error: ${error.message}`;
+                errorMessage.classList.remove('hidden');
+                console.error("Error fetching weather data:", error);
+            } finally {
+                // Always hide the loading indicator when the process is complete
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // Event listener for the button click
+        fetchWeatherBtn.addEventListener('click', () => {
+            const city = cityInput.value.trim(); // Get city name and remove leading/trailing whitespace
+            getWeatherData(city);
+        });
+
+        // Event listener for 'Enter' key press in the input field
+        cityInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                fetchWeatherBtn.click(); // Simulate a click on the button
+            }
+        });
+
+        // Load weather for a default city when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            getWeatherData('London'); // You can change this to any default city
+        });
+    </script>
+</body>
+</html>
